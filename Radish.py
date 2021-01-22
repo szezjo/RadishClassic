@@ -3,6 +3,7 @@ import sys
 import json
 import re
 import struct
+import http
 import urllib.request as urllib2
 from time import sleep
 from PyQt5 import QtCore, QtWidgets
@@ -30,7 +31,8 @@ class Player(QObject):
         media = self.vlci.media_new(url)
         self.vlcp.set_media(media)
         self.vlcp.play()
-        self.parent.updateMetadata()
+        if(self.parent.isMetadataAcquirable):
+            self.parent.updateMetadata()
 
     def stop(self):
         self.vlcp.stop()
@@ -61,6 +63,7 @@ class Radish(QMainWindow):
         self.metadata = ""
         self.songName = ""
         self.artist = ""
+        self.isMetadataAcquirable = True
 
         self.pThread = QThread()
         self.player = Player()
@@ -129,7 +132,7 @@ class Radish(QMainWindow):
 
     def changeStation(self):
         stationUrl = stations.get(self.stationSelector.currentText())
-        
+        self.isMetadataAcquirable = True
         if(stationUrl=='Don\'t play'):
             self.player.stop()
         elif(stationUrl):
@@ -141,21 +144,26 @@ class Radish(QMainWindow):
         stationUrl = stations.get(self.stationSelector.currentText())
         if(stationUrl=='Don\'t play' or not stationUrl):
             return
-        encoding = 'latin1'
-        request = urllib2.Request(stationUrl, headers={'Icy-MetaData': 1})
-        response = urllib2.urlopen(request)
-        metaint = int(response.headers['icy-metaint'])
-        for _ in range(10):
-            response.read(metaint)
-            metadata_length = struct.unpack('B', response.read(1))[0]*16
-            metadata = response.read(metadata_length).rstrip(b'\0')
-            m = re.search(br"StreamTitle='([^']*)';", metadata)
-            if m:
-                title = m.group(1)
-                if title:
-                    break
-        else:
-            self.metadata = ''
+        try:
+            encoding = 'latin1'
+            request = urllib2.Request(stationUrl, headers={'Icy-MetaData': 1})
+            response = urllib2.urlopen(request)
+            metaint = int(response.headers['icy-metaint'])
+            for _ in range(10):
+                response.read(metaint)
+                metadata_length = struct.unpack('B', response.read(1))[0]*16
+                metadata = response.read(metadata_length).rstrip(b'\0')
+                m = re.search(br"StreamTitle='([^']*)';", metadata)
+                if m:
+                    title = m.group(1)
+                    if title:
+                        break
+            else:
+                self.metadata = ''
+                return
+        except http.client.HTTPException as e:
+            self.metadata = 'Odtwarzanie...'
+            self.isMetadataAcquirable = False
             return
         self.metadata=str(title.decode(encoding, errors='replace'))
 
@@ -214,6 +222,8 @@ class ManageStations(QMainWindow):
         mainArea.addLayout(buttonsGrid,0,2,1,1)
 
     def playStation(self):
+        if(self.stationsList.currentItem()==None):
+            return
         index = self.parent.stationSelector.findText(self.stationsList.currentItem().text())
         if(index != -1):
             self.parent.stationSelector.setCurrentIndex(index)
