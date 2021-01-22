@@ -1,6 +1,9 @@
 import vlc
 import sys
 import json
+import re
+import struct
+import urllib.request as urllib2
 from time import sleep
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QLabel, QComboBox, QMenuBar, QPushButton, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QGridLayout, QSlider, QSizePolicy
@@ -15,6 +18,9 @@ class Player(QObject):
     vlci = vlc.Instance('--input-repeat=-1','--fullscreen','-q')
     vlcp = vlci.media_player_new()
 
+    def setParent(self,parent):
+        self.parent=parent
+
     def run(self):
         while(True):
             sleep(1)
@@ -24,6 +30,7 @@ class Player(QObject):
         media = self.vlci.media_new(url)
         self.vlcp.set_media(media)
         self.vlcp.play()
+        self.parent.updateMetadata()
 
     def stop(self):
         self.vlcp.stop()
@@ -33,8 +40,14 @@ class StatusManager(QObject):
         self.parent=parent
     
     def run(self):
+        i=0
         while(True):
+            if(i==0):
+                self.parent.updateMetadata()
             self.parent.updateLabel()
+            i=i+1
+            if(i==10):
+                i=0
             sleep(1)
 
 class Radish(QMainWindow):
@@ -44,9 +57,14 @@ class Radish(QMainWindow):
         self.setMinimumSize(QSize(700,180))
         self.setWindowTitle("Radish")
         self.status = QLabel()
+        self.stationSelector = QComboBox()
+        self.metadata = ""
+        self.songName = ""
+        self.artist = ""
 
         self.pThread = QThread()
         self.player = Player()
+        self.player.setParent(self)
         self.player.moveToThread(self.pThread)
         self.pThread.started.connect(self.player.run)
         self.pThread.start()
@@ -77,7 +95,6 @@ class Radish(QMainWindow):
 
         # Radio selector and volume slider
         radioGrid = QGridLayout()
-        self.stationSelector = QComboBox()
         self.refreshStations()
         self.stationSelector.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.stationSelector.currentIndexChanged.connect(self.changeStation)
@@ -116,6 +133,29 @@ class Radish(QMainWindow):
         else:
             self.player.stop()
 
+    def updateMetadata(self):
+        stationUrl = stations.get(self.stationSelector.currentText())
+        if(stationUrl=='Don\'t play' or not stationUrl):
+            return
+        encoding = 'latin1'
+        request = urllib2.Request(stationUrl, headers={'Icy-MetaData': 1})
+        response = urllib2.urlopen(request)
+        metaint = int(response.headers['icy-metaint'])
+        for _ in range(10):
+            response.read(metaint)
+            metadata_length = struct.unpack('B', response.read(1))[0]*16
+            metadata = response.read(metadata_length).rstrip(b'\0')
+            m = re.search(br"StreamTitle='([^']*)';", metadata)
+            if m:
+                title = m.group(1)
+                if title:
+                    break
+        else:
+            self.metadata = ''
+            return
+        self.metadata=str(title.decode(encoding, errors='replace'))
+
+
     def updateLabel(self):
         state = str(self.player.vlcp.get_state())
         if(state=='State.NothingSpecial' or state=='State.Stopped'):
@@ -123,7 +163,7 @@ class Radish(QMainWindow):
         elif(state=='State.Opening'):
             self.status.setText(lang['loading_stream'])
         elif(state=='State.Playing'):
-            self.status.setText('artist\nsong')
+            self.status.setText(self.metadata)
         else:
             self.status.setText(state)
 
