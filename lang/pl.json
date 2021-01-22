@@ -1,6 +1,24 @@
 {
+    "welcome":"Witaj!",
     "options":"Opcje",
     "manage_stations":"Zarządzaj stacjami...",
     "preferences":"Ustawienia",
-    "quit":"Zakończ"
+    "quit":"Zakończ",
+
+    "dont_play":"Nie odtwarzaj nic",
+    "loading_stream":"Ładowanie strumienia...",
+
+    "ms_title":"Zarządzanie stacjami",
+    "ms_play":"Odtwórz",
+    "ms_add":"Dodaj",
+    "ms_edit":"Edytuj",
+    "ms_remove":"Usuń",
+    "ms_supported":"Wspierane stacje",
+
+    "se-title":"Edytuj stację",
+    "se-station-name":"Nazwa",
+    "se-station-url":"URL strumienia",
+    "se-apply":"OK",
+    "se-cancel":"Anuluj",
+    "se-remove-q":"Czy chcesz usunąć tę stację?"
 }

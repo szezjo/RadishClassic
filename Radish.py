@@ -6,7 +6,7 @@ import struct
 import urllib.request as urllib2
 from time import sleep
 from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtWidgets import QLabel, QComboBox, QMenuBar, QPushButton, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QGridLayout, QSlider, QSizePolicy
+from PyQt5.QtWidgets import QLineEdit, QLabel, QComboBox, QMenuBar, QPushButton, QMessageBox, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QGridLayout, QSlider, QSizePolicy, QListWidget
 from PyQt5.QtCore import QSize, Qt, QThread, QObject, pyqtSignal
 from PyQt5.QtGui import QIcon
 
@@ -108,7 +108,7 @@ class Radish(QMainWindow):
         radioGrid.addWidget(self.volSlider,0,3,1,1)
         mainArea.addLayout(radioGrid,0)
 
-        self.status.setText('Welcome to Radish!')
+        self.status.setText(lang['welcome'])
         self.status.setAlignment(Qt.AlignCenter)
         mainArea.addWidget(self.status,1)
 
@@ -175,17 +175,132 @@ class Radish(QMainWindow):
         self.player.vlcp.audio_set_volume(self.volSlider.value())
 
 
+
 class ManageStations(QMainWindow):
     def __init__(self, parent=None):
+        self.parent=parent
         QMainWindow.__init__(self)
 
         self.setMinimumSize(QSize(700,300))
         self.setWindowTitle(lang['ms_title'])
+        self.editStationWin = StationEditor(self)
 
         widget = QWidget()
-        mainArea = QHBoxLayout()
+        mainArea = QGridLayout()
         widget.setLayout(mainArea)
         self.setCentralWidget(widget)
+
+        self.stationsList = QListWidget()
+        for station in stations:
+            self.stationsList.addItem(station)
+        self.stationsList.itemDoubleClicked.connect(self.playStation)
+        mainArea.addWidget(self.stationsList,0,0,1,2)
+
+        buttonsGrid = QGridLayout()
+        playButton = QPushButton(lang['ms_play'])
+        playButton.clicked.connect(self.playStation)
+        addButton = QPushButton(lang['ms_add'])
+        addButton.clicked.connect(self.addStation)
+        editButton = QPushButton(lang['ms_edit'])
+        editButton.clicked.connect(lambda: self.editStation(self.stationsList.currentRow()))
+        removeButton = QPushButton(lang['ms_remove'])
+        removeButton.clicked.connect(lambda: self.removeStation(self.stationsList.currentRow()))
+        supportedButton = QPushButton(lang['ms_supported'])
+        buttonsGrid.addWidget(playButton,0,0)
+        buttonsGrid.addWidget(addButton,1,0)
+        buttonsGrid.addWidget(editButton,2,0)
+        buttonsGrid.addWidget(removeButton,3,0)
+        buttonsGrid.addWidget(supportedButton,4,0)
+        mainArea.addLayout(buttonsGrid,0,2,1,1)
+
+    def playStation(self):
+        index = self.parent.stationSelector.findText(self.stationsList.currentItem().text())
+        if(index != -1):
+            self.parent.stationSelector.setCurrentIndex(index)
+
+    def addStation(self):
+        if(self.editStationWin):
+            self.editStationWin.close()
+        self.editStationWin = StationEditor(self)
+        self.editStationWin.show()
+
+    def editStation(self,stationIndex):
+        if(self.editStationWin):
+            self.editStationWin.close()
+        self.editStationWin = StationEditor(self,stationIndex)
+        self.editStationWin.show()
+
+    def removeStation(self,stationIndex):
+        name = list(stations)[stationIndex]
+        reply = QMessageBox.question(self, name, lang['se-remove-q'], QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if(reply==QMessageBox.Yes):
+            stations.pop(name)
+            with open('stations.json', 'w') as outfile:
+                json.dump(stations,outfile)
+            self.updateList()
+
+    def updateList(self):
+        self.stationsList.clear()
+        for station in stations:
+            self.stationsList.addItem(station)
+        self.parent.refreshStations()
+
+class StationEditor(QMainWindow):
+    def __init__(self, parent=None, stationIndex=-1):
+        self.parent=parent
+        self.index=stationIndex
+        QMainWindow.__init__(self)
+
+        self.setMinimumSize(QSize(400,200))
+        self.setWindowTitle(lang['se-title'])
+
+        widget = QWidget()
+        mainArea = QGridLayout()
+        widget.setLayout(mainArea)
+        self.setCentralWidget(widget)
+
+        nameLabel = QLabel(lang['se-station-name'])
+        urlLabel = QLabel(lang['se-station-url'])
+        self.nameField = QLineEdit()
+        self.urlField = QLineEdit()
+        saveButton = QPushButton(lang['se-apply'])
+        saveButton.clicked.connect(self.saveStation)
+        cancelButton = QPushButton(lang['se-cancel'])
+        cancelButton.clicked.connect(self.close)
+
+        if(stationIndex!=-1 and stationIndex!=None):
+            self.nameField.setText(list(stations)[stationIndex])
+            self.urlField.setText(list(stations.values())[stationIndex])
+
+        mainArea.addWidget(nameLabel,0,0,1,1)
+        mainArea.addWidget(urlLabel,1,0,1,1)
+        mainArea.addWidget(self.nameField,0,1,1,5)
+        mainArea.addWidget(self.urlField,1,1,1,5)
+        mainArea.addWidget(cancelButton,2,4,1,1)
+        mainArea.addWidget(saveButton,2,5,1,1)
+
+
+    def saveStation(self):
+        if(self.index==-1):
+            stations[self.nameField.text()]=self.urlField.text()
+        else:
+            stationsNew = {}
+            stationsList = list(stations)
+            stationsListVal = list(stations.values())
+            for i in range(0,self.index):
+                stationsNew[stationsList[i]] = stationsListVal[i]
+            stationsNew[self.nameField.text()]=self.urlField.text()
+            for i in range(self.index+1, len(stations)):
+                stationsNew[stationsList[i]] = stationsListVal[i]
+            stations.clear()
+            stations.update(stationsNew)
+
+        with open('stations.json', 'w') as outfile:
+            json.dump(stations,outfile)
+        
+        self.parent.updateList()
+
+
 
 
 if __name__ == "__main__":
@@ -201,7 +316,6 @@ if __name__ == "__main__":
 
     with open('stations.json') as json_file:
         stations = json.load(json_file)
-
     
 
     app = QtWidgets.QApplication(sys.argv)

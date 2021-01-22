@@ -1,4 +1,5 @@
 {
+    "welcome":"Welcome to Radish!",
     "options":"Options",
     "manage_stations":"Manage stations...",
     "preferences":"Preferences",
@@ -7,5 +8,17 @@
     "dont_play":"Don't play",
     "loading_stream":"Loading stream...",
 
-    "ms_title":"Manage stations"
+    "ms_title":"Manage stations",
+    "ms_play":"Play",
+    "ms_add":"Add",
+    "ms_edit":"Edit",
+    "ms_remove":"Remove",
+    "ms_supported":"Supported stations",
+
+    "se-title":"Edit station",
+    "se-station-name":"Name",
+    "se-station-url":"Stream URL",
+    "se-apply":"OK",
+    "se-cancel":"Cancel",
+    "se-remove-q":"Do you want to remove this station?"
 }
