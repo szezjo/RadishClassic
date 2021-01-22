@@ -98,10 +98,14 @@ class Radish(QMainWindow):
         self.refreshStations()
         self.stationSelector.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.stationSelector.currentIndexChanged.connect(self.changeStation)
-        volSlider = QSlider(Qt.Horizontal)
-        volSlider.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.volSlider = QSlider(Qt.Horizontal)
+        self.volSlider.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.volSlider.setMinimum(0)
+        self.volSlider.setMaximum(100)
+        self.volSlider.setValue(100)
+        self.volSlider.valueChanged.connect(self.changeVolume)
         radioGrid.addWidget(self.stationSelector,0,0,1,3)
-        radioGrid.addWidget(volSlider,0,3,1,1)
+        radioGrid.addWidget(self.volSlider,0,3,1,1)
         mainArea.addLayout(radioGrid,0)
 
         self.status.setText('Welcome to Radish!')
@@ -166,6 +170,10 @@ class Radish(QMainWindow):
             self.status.setText(self.metadata)
         else:
             self.status.setText(state)
+
+    def changeVolume(self):
+        self.player.vlcp.audio_set_volume(self.volSlider.value())
+
 
 class ManageStations(QMainWindow):
     def __init__(self, parent=None):
