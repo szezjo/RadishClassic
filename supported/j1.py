@@ -29,4 +29,6 @@ class Station(_RadioStation):
         else:
             return self.getENSongData()
 
-
+radios = {"func": Station}
+f = radios["func"]()
+print(f.getSongData())
