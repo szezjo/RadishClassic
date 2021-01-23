@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import QLineEdit, QLabel, QComboBox, QMenuBar, QPushButton,
 from PyQt5.QtCore import QSize, Qt, QThread, QObject, pyqtSignal
 from PyQt5.QtGui import QIcon
 
+from supported._object import _RadioStation
 config = {}
 lang = {}
 stations = {}
@@ -64,6 +65,7 @@ class Radish(QMainWindow):
         self.songName = ""
         self.artist = ""
         self.isMetadataAcquirable = True
+        self.isStationSupported = False
 
         self.pThread = QThread()
         self.player = Player()
